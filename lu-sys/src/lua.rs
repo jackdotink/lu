@@ -145,7 +145,7 @@ pub type lua_CFunction = extern "C-unwind" fn(L: *mut lua_State) -> c_int;
 ///     return 0;
 /// }
 /// ```
-pub type lua_Continuation = extern "C-unwind" fn(L: *mut lua_State, status: c_int) -> c_int;
+pub type lua_Continuation = extern "C-unwind" fn(L: *mut lua_State, status: lua_Status) -> c_int;
 
 /// The type of the memory allocator function used by Luau's VM.
 ///
