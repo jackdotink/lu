@@ -320,9 +320,9 @@ unsafe extern "C-unwind" {
 
     /// Pushes a value from an index of one stack onto another stack.
     ///
-    /// This function pushes a copy of the value at the given index of the `from` stack
-    /// onto the top of the `to` stack.
-    pub fn lua_xpush(from: *mut lua_State, to: *mut lua_State, idx: c_int) -> c_int;
+    /// This function pushes a copy of the value at the given index of the
+    /// `from` stack onto the top of the `to` stack.
+    pub fn lua_xpush(from: *mut lua_State, to: *mut lua_State, idx: c_int);
 
     /// Does the given index contain a value of type number.
     pub fn lua_isnumber(L: *mut lua_State, idx: c_int) -> c_int;
