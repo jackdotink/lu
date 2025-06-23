@@ -1,0 +1,3 @@
+[submodule "lu-sys/luau"]
+	path = lu-sys/luau
+	url = https://github.com/luau-lang/luau.git

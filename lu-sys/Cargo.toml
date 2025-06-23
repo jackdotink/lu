@@ -1,0 +1,13 @@
+[package]
+name = "lu-sys"
+description = "FFI bindings to the Luau C API"
+license = "MIT"
+repository = "https://github.com/jackdotink/lu"
+version = "0.677.0"
+edition = "2024"
+
+[dependencies]
+libc = "0.2.0"
+
+[build-dependencies]
+cmake = "0.1.0"
