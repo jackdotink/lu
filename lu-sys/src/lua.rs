@@ -23,7 +23,7 @@ pub const LUA_MULTRET: c_int = -1;
 /// Luau's ref system.
 ///
 /// Care should be taken that keys do not conflict. A great way to avoid this is
-/// to use a lightuserdata key pointing to a static variable, as this will
+/// to use a light userdata key pointing to a static variable, as this will
 /// always be unique.
 pub const LUA_REGISTRYINDEX: c_int = -LUAI_MAXCSTACK - 2000;
 
