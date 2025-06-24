@@ -1,8 +1,8 @@
 use std::{cell::RefCell, ffi, marker::PhantomData, ptr::NonNull};
 
 use crate::{
-    Library, Stack, Thread, ThreadMain,
-    alloc::{DefaultAllocator, LuauAllocator},
+    alloc::{DefaultAllocator, LuauAllocator}, Library, Stack, Thread,
+    ThreadMain,
 };
 
 pub struct State<MainData, ThreadData, Alloc: LuauAllocator = DefaultAllocator> {
@@ -123,5 +123,9 @@ impl<MainData, ThreadData, Alloc: LuauAllocator> State<MainData, ThreadData, All
 
     pub fn open<L: Library<MainData, ThreadData>>(&self) {
         L::open(&self.thread())
+    }
+
+    pub fn sandbox(&self) {
+        unsafe { sys::luaL_sandbox(self.as_ptr()) }
     }
 }

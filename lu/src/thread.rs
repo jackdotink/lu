@@ -33,6 +33,10 @@ impl<MainData, ThreadData> Thread<MainData, ThreadData> {
                 .unwrap_unchecked()
         }
     }
+
+    pub fn sandbox(&self) {
+        unsafe { sys::luaL_sandboxthread(self.as_ptr()) }
+    }
 }
 
 pub struct ThreadMain<MainData, ThreadData> {

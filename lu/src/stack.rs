@@ -1,11 +1,11 @@
 use std::{cell::RefCell, ffi::CStr, marker::PhantomData, ptr::NonNull};
 
 use crate::{
-    Bytecode, Status, Type,
-    context::{Context, FnReturn},
-    extra::Ref,
-    thread::{Thread, ThreadMain, ThreadRef},
+    context::{Context, FnReturn}, extra::Ref, thread::{Thread, ThreadMain, ThreadRef},
     userdata::Userdata,
+    Bytecode,
+    Status,
+    Type,
 };
 
 #[repr(transparent)]
@@ -405,5 +405,57 @@ impl<MainData, ThreadData> Stack<MainData, ThreadData> {
         Ref(self.main(), unsafe {
             sys::lua_ref(self.as_ptr(), idx) as _
         })
+    }
+
+    pub fn table_get(&self, tblidx: i32) {
+        unsafe { sys::lua_gettable(self.as_ptr(), tblidx) };
+    }
+
+    pub fn table_set(&self, tblidx: i32) {
+        unsafe { sys::lua_settable(self.as_ptr(), tblidx) };
+    }
+
+    pub fn table_get_field(&self, tblidx: i32, field: &CStr) {
+        unsafe { sys::lua_getfield(self.as_ptr(), tblidx, field.as_ptr()) };
+    }
+
+    pub fn table_set_field(&self, tblidx: i32, field: &CStr) {
+        unsafe { sys::lua_setfield(self.as_ptr(), tblidx, field.as_ptr()) };
+    }
+
+    pub fn table_get_raw(&self, tblidx: i32) {
+        unsafe { sys::lua_rawget(self.as_ptr(), tblidx) };
+    }
+
+    pub fn table_set_raw(&self, tblidx: i32) {
+        unsafe { sys::lua_rawset(self.as_ptr(), tblidx) };
+    }
+
+    pub fn table_get_raw_i(&self, tblidx: i32, i: u32) {
+        unsafe { sys::lua_rawgeti(self.as_ptr(), tblidx, i as _) };
+    }
+
+    pub fn table_set_raw_i(&self, tblidx: i32, i: u32) {
+        unsafe { sys::lua_rawseti(self.as_ptr(), tblidx, i as _) };
+    }
+
+    pub fn table_get_raw_field(&self, tblidx: i32, field: &CStr) {
+        unsafe { sys::lua_rawgetfield(self.as_ptr(), tblidx, field.as_ptr()) };
+    }
+
+    pub fn table_set_raw_field(&self, tblidx: i32, field: &CStr) {
+        unsafe { sys::lua_rawsetfield(self.as_ptr(), tblidx, field.as_ptr()) };
+    }
+    
+    pub fn table_set_readonly(&self, tblidx: i32, readonly: bool) {
+        unsafe { sys::lua_setreadonly(self.as_ptr(), tblidx, readonly as _) };
+    }
+    
+    pub fn table_get_readonly(&self, tblidx: i32) -> bool {
+        unsafe { sys::lua_getreadonly(self.as_ptr(), tblidx) != 0 }
+    }
+
+    pub fn len(&self, idx: i32) -> u32 {
+        unsafe { sys::lua_objlen(self.as_ptr(), idx as _) as u32 }
     }
 }
