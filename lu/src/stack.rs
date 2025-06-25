@@ -480,4 +480,19 @@ impl<MainData, ThreadData> Stack<MainData, ThreadData> {
     pub fn len(&self, idx: i32) -> u32 {
         unsafe { sys::lua_objlen(self.as_ptr(), idx as _) as u32 }
     }
+
+    pub fn iter(&self, tblidx: i32, mut func: impl FnMut()) {
+        let mut iterindex = 0;
+        loop {
+            let nextindex = unsafe { sys::lua_rawiter(self.as_ptr(), tblidx, iterindex) };
+
+            if nextindex == -1 {
+                break;
+            } else {
+                iterindex = nextindex;
+                func();
+                self.pop(2);
+            }
+        }
+    }
 }
