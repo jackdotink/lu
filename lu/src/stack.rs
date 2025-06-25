@@ -1,11 +1,13 @@
-use std::{cell::RefCell, ffi::CStr, marker::PhantomData, ptr::NonNull};
+use std::{
+    cell::RefCell,
+    ffi::{CStr, CString},
+    marker::PhantomData,
+    ptr::NonNull,
+};
 
 use crate::{
-    context::{Context, FnReturn}, extra::Ref, thread::{Thread, ThreadMain, ThreadRef},
-    userdata::Userdata,
-    Bytecode,
-    Status,
-    Type,
+    Bytecode, Context, FnReturn, Function, Ref, Status, Thread, ThreadMain, ThreadRef, Type,
+    Userdata,
 };
 
 #[repr(transparent)]
@@ -172,6 +174,17 @@ impl<MainData, ThreadData> Stack<MainData, ThreadData> {
         self.push_extern_closure(name, 0, func);
     }
 
+    pub fn push_function(&self, func: Function<MainData, ThreadData>) {
+        let name = CString::new(func.name()).expect("function name contains null byte");
+
+        match func {
+            Function::Normal { func, .. } => self.push_extern_function(name.as_c_str(), func),
+            Function::Continuation { func, cont, .. } => {
+                self.push_extern_function_cont(name.as_c_str(), func, cont)
+            }
+        }
+    }
+
     pub fn push_bytecode(&self, name: &CStr, bytecode: Bytecode) {
         unsafe {
             sys::luau_load(
@@ -213,7 +226,10 @@ impl<MainData, ThreadData> Stack<MainData, ThreadData> {
         let thread = Thread(NonNull::new(thread).unwrap(), PhantomData);
         let th_ref = self.to_ref(-1);
 
-        ThreadRef { thread, th_ref }
+        ThreadRef {
+            thread,
+            _thref: th_ref,
+        }
     }
 
     #[allow(clippy::mut_from_ref)]
@@ -366,7 +382,10 @@ impl<MainData, ThreadData> Stack<MainData, ThreadData> {
         let thread = unsafe { Thread(NonNull::new_unchecked(ptr), PhantomData) };
         let th_ref = self.to_ref(idx);
 
-        ThreadRef { thread, th_ref }
+        ThreadRef {
+            thread,
+            _thref: th_ref,
+        }
     }
 
     pub fn to_thread(&self, idx: i32) -> Option<ThreadRef<MainData, ThreadData>> {
@@ -376,7 +395,10 @@ impl<MainData, ThreadData> Stack<MainData, ThreadData> {
             let thread = Thread(NonNull::new(ptr).unwrap(), PhantomData);
             let th_ref = self.to_ref(idx);
 
-            Some(ThreadRef { thread, th_ref })
+            Some(ThreadRef {
+                thread,
+                _thref: th_ref,
+            })
         } else {
             None
         }
@@ -446,11 +468,11 @@ impl<MainData, ThreadData> Stack<MainData, ThreadData> {
     pub fn table_set_raw_field(&self, tblidx: i32, field: &CStr) {
         unsafe { sys::lua_rawsetfield(self.as_ptr(), tblidx, field.as_ptr()) };
     }
-    
+
     pub fn table_set_readonly(&self, tblidx: i32, readonly: bool) {
         unsafe { sys::lua_setreadonly(self.as_ptr(), tblidx, readonly as _) };
     }
-    
+
     pub fn table_get_readonly(&self, tblidx: i32) -> bool {
         unsafe { sys::lua_getreadonly(self.as_ptr(), tblidx) != 0 }
     }

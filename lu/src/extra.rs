@@ -1,6 +1,4 @@
-use std::ptr::NonNull;
-
-use crate::{State, thread::ThreadMain};
+use crate::{Context, FnReturn, thread::ThreadMain};
 
 #[repr(C)]
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -47,5 +45,42 @@ pub struct Ref<MainData, ThreadData>(pub(crate) ThreadMain<MainData, ThreadData>
 impl<MainData, ThreadData> Drop for Ref<MainData, ThreadData> {
     fn drop(&mut self) {
         unsafe { sys::lua_unref(self.0.as_ptr(), self.1 as _) }
+    }
+}
+
+pub enum Function<MainData, ThreadData> {
+    Normal {
+        name: &'static str,
+        func: extern "C-unwind" fn(ctx: Context<MainData, ThreadData>) -> FnReturn,
+    },
+
+    Continuation {
+        name: &'static str,
+        func: extern "C-unwind" fn(ctx: Context<MainData, ThreadData>) -> FnReturn,
+        cont: extern "C-unwind" fn(ctx: Context<MainData, ThreadData>, status: Status) -> FnReturn,
+    },
+}
+
+impl<MainData, ThreadData> Function<MainData, ThreadData> {
+    pub fn normal(
+        name: &'static str,
+        func: extern "C-unwind" fn(ctx: Context<MainData, ThreadData>) -> FnReturn,
+    ) -> Self {
+        Self::Normal { name, func }
+    }
+
+    pub fn cont(
+        name: &'static str,
+        func: extern "C-unwind" fn(ctx: Context<MainData, ThreadData>) -> FnReturn,
+        cont: extern "C-unwind" fn(ctx: Context<MainData, ThreadData>, status: Status) -> FnReturn,
+    ) -> Self {
+        Self::Continuation { name, func, cont }
+    }
+
+    pub fn name(&self) -> &'static str {
+        match self {
+            Self::Normal { name, .. } => name,
+            Self::Continuation { name, .. } => name,
+        }
     }
 }

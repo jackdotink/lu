@@ -1,6 +1,6 @@
 use std::{cell::RefCell, marker::PhantomData, ops::Deref, ptr::NonNull};
 
-use crate::{extra::Ref, stack::Stack};
+use crate::{Ref, Stack};
 
 #[repr(transparent)]
 pub struct Thread<MainData, ThreadData>(
@@ -64,7 +64,7 @@ impl<MainData, ThreadData> ThreadMain<MainData, ThreadData> {
 
 pub struct ThreadRef<MainData, ThreadData> {
     pub(crate) thread: Thread<MainData, ThreadData>,
-    pub(crate) th_ref: Ref<MainData, ThreadData>,
+    pub(crate) _thref: Ref<MainData, ThreadData>,
 }
 
 impl<MainData, ThreadData> Deref for ThreadRef<MainData, ThreadData> {

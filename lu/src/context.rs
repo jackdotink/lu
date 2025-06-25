@@ -6,7 +6,7 @@ use std::{
     ptr::NonNull,
 };
 
-use crate::{Type, Userdata, stack::Stack, thread::ThreadRef};
+use crate::{Type, Userdata, Stack, ThreadRef};
 
 #[repr(transparent)]
 pub struct FnReturn(i32);
