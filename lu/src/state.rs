@@ -113,7 +113,7 @@ impl<MainData, ThreadData, Alloc: LuauAllocator> State<MainData, ThreadData, All
     }
 
     pub fn stack(&self) -> &Stack<MainData, ThreadData> {
-        unsafe { std::mem::transmute(self.ptr) }
+        unsafe { std::mem::transmute(&self.ptr) }
     }
 
     pub fn data(&self) -> &RefCell<MainData> {
