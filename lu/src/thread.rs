@@ -1,6 +1,6 @@
 use std::{cell::RefCell, marker::PhantomData, ops::Deref, ptr::NonNull};
 
-use crate::{Ref, Stack};
+use crate::{Ref, Stack, Status};
 
 #[repr(transparent)]
 pub struct Thread<MainData, ThreadData>(
@@ -36,6 +36,15 @@ impl<MainData, ThreadData> Thread<MainData, ThreadData> {
 
     pub fn sandbox(&self) {
         unsafe { sys::luaL_sandboxthread(self.as_ptr()) }
+    }
+
+    pub fn resume(&self, from: Option<&Thread<MainData, ThreadData>>, nargs: u32) -> Status {
+        let from = match from {
+            Some(thread) => thread.as_ptr(),
+            None => std::ptr::null_mut(),
+        };
+
+        unsafe { sys::lua_resume(self.as_ptr(), from, nargs as _) }.into()
     }
 }
 
