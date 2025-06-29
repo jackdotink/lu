@@ -238,9 +238,9 @@ impl<MD, TD: ThreadData<MD>> Stack<MD, TD> {
     }
 
     #[allow(clippy::mut_from_ref)]
-    pub fn push_buffer(&self, size: usize) -> &mut [u8] {
+    pub fn push_buffer(&self, size: usize) -> (*mut u8, usize) {
         let ptr = unsafe { sys::lua_newbuffer(self.as_ptr(), size) };
-        unsafe { std::slice::from_raw_parts_mut(ptr as _, size) }
+        (ptr.cast(), size)
     }
 
     pub fn push_ref(&self, r: &Ref<MD, TD>) -> Type {
@@ -410,19 +410,19 @@ impl<MD, TD: ThreadData<MD>> Stack<MD, TD> {
     }
 
     #[allow(clippy::mut_from_ref)]
-    pub unsafe fn to_buffer_unchecked(&self, idx: i32) -> &mut [u8] {
+    pub unsafe fn to_buffer_unchecked(&self, idx: i32) -> (*mut u8, usize) {
         let mut len = 0;
         let ptr = unsafe { sys::lua_tobuffer(self.as_ptr(), idx as _, &mut len) };
 
-        unsafe { std::slice::from_raw_parts_mut(ptr.cast(), len) }
+        (ptr.cast(), len)
     }
 
-    pub fn to_buffer(&self, idx: i32) -> Option<&mut [u8]> {
+    pub fn to_buffer(&self, idx: i32) -> Option<(*mut u8, usize)> {
         let mut len = 0;
         let ptr = unsafe { sys::lua_tobuffer(self.as_ptr(), idx as _, &mut len) };
 
         if !ptr.is_null() {
-            Some(unsafe { std::slice::from_raw_parts_mut(ptr.cast(), len) })
+            Some((ptr.cast(), len))
         } else {
             None
         }
