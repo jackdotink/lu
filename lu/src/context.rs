@@ -169,12 +169,12 @@ impl<MD, TD: ThreadData<MD>> Context<MD, TD> {
         }
     }
 
-    pub fn arg_buffer(&self, narg: u32) -> &mut [u8] {
+    pub fn arg_buffer(&self, narg: u32) -> (*mut u8, usize) {
         self.to_buffer(narg as _)
             .unwrap_or_else(|| self.arg_type_error(narg, c"buffer"))
     }
 
-    pub fn arg_buffer_opt(&self, narg: u32) -> Option<&mut [u8]> {
+    pub fn arg_buffer_opt(&self, narg: u32) -> Option<(*mut u8, usize)> {
         match self.type_of(narg as _) {
             Type::Nil | Type::None => None,
             Type::Buffer => Some(unsafe { self.to_buffer_unchecked(narg as _) }),
