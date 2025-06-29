@@ -202,6 +202,11 @@ impl<MD, TD: ThreadData<MD>> Stack<MD, TD> {
         let size = size_of::<RefCell<T>>();
 
         unsafe {
+            #[cfg(debug_assertions)]
+            if sys::lua_getuserdatadtor(self.as_ptr(), tag as _).is_none() {
+                panic!("attempt to push unregistered userdata type: {}", T::name());
+            }
+
             let ptr = sys::lua_newuserdatataggedwithmetatable(self.as_ptr(), size, tag as _);
             let ptr = ptr.cast::<RefCell<T>>();
 
