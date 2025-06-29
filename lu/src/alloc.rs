@@ -1,4 +1,4 @@
-use std::alloc::{Layout, dealloc, realloc};
+use std::alloc::{Layout, alloc, dealloc, realloc};
 
 pub trait LuauAllocator {
     fn alloc(&mut self, nsize: usize) -> *mut u8;
@@ -13,7 +13,7 @@ pub struct DefaultAllocator;
 impl LuauAllocator for DefaultAllocator {
     fn alloc(&mut self, nsize: usize) -> *mut u8 {
         let layout = Layout::from_size_align(nsize, 16).unwrap();
-        unsafe { std::alloc::alloc(layout) }
+        unsafe { alloc(layout) }
     }
 
     fn realloc(&mut self, ptr: *mut u8, osize: usize, nsize: usize) -> *mut u8 {
