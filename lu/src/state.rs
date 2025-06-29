@@ -1,9 +1,4 @@
-use std::{
-    cell::RefCell,
-    ffi::{self, CStr},
-    marker::PhantomData,
-    ptr::NonNull,
-};
+use std::{cell::RefCell, ffi, marker::PhantomData, ptr::NonNull};
 
 use crate::{
     DefaultAllocator, Library, LuauAllocator, Stack, Thread, ThreadData, ThreadMain, ThreadRef,
