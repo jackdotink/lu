@@ -1,5 +1,3 @@
-use std::ffi::CStr;
-
 use crate::{Function, Stack, ThreadData};
 
 pub struct Library<MD, TD: ThreadData<MD>>(pub Vec<(&'static str, LibraryItem<MD, TD>)>);
