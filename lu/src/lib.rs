@@ -14,7 +14,7 @@ mod userdata;
 pub use alloc::{DefaultAllocator, LuauAllocator};
 pub use compiler::{Bytecode, CompileResult, Compiler};
 pub use context::{Context, FnReturn};
-pub use extra::{Function, Ref, Status, Type};
+pub use extra::{Function, Ref, Status, ThreadData, Type};
 pub use library::Library;
 pub use stack::Stack;
 pub use state::State;

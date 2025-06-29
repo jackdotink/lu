@@ -1,19 +1,19 @@
 use std::{cell::RefCell, marker::PhantomData, ops::Deref, ptr::NonNull};
 
-use crate::{Ref, Stack, Status};
+use crate::{Ref, Stack, Status, ThreadData};
 
 #[repr(transparent)]
-pub struct Thread<MainData, ThreadData>(
+pub struct Thread<MD, TD: ThreadData<MD>>(
     pub(crate) NonNull<sys::lua_State>,
-    pub(crate) PhantomData<(MainData, ThreadData)>,
+    pub(crate) PhantomData<(MD, TD)>,
 );
 
-impl<MainData, ThreadData> Thread<MainData, ThreadData> {
+impl<MD, TD: ThreadData<MD>> Thread<MD, TD> {
     pub fn as_ptr(&self) -> *mut sys::lua_State {
         self.0.as_ptr()
     }
 
-    pub fn main(&self) -> ThreadMain<MainData, ThreadData> {
+    pub fn main(&self) -> ThreadMain<MD, TD> {
         let ptr = unsafe { NonNull::new_unchecked(sys::lua_mainthread(self.as_ptr())) };
 
         ThreadMain {
@@ -21,14 +21,14 @@ impl<MainData, ThreadData> Thread<MainData, ThreadData> {
         }
     }
 
-    pub fn stack(&self) -> &Stack<MainData, ThreadData> {
+    pub fn stack(&self) -> &Stack<MD, TD> {
         unsafe { std::mem::transmute(self) }
     }
 
-    pub fn data(&self) -> &RefCell<ThreadData> {
+    pub fn data(&self) -> &RefCell<TD> {
         unsafe {
             sys::lua_getthreaddata(self.as_ptr())
-                .cast::<RefCell<ThreadData>>()
+                .cast::<RefCell<TD>>()
                 .as_ref()
                 .unwrap_unchecked()
         }
@@ -38,7 +38,7 @@ impl<MainData, ThreadData> Thread<MainData, ThreadData> {
         unsafe { sys::luaL_sandboxthread(self.as_ptr()) }
     }
 
-    pub fn resume(&self, from: Option<&Thread<MainData, ThreadData>>, nargs: u32) -> Status {
+    pub fn resume(&self, from: Option<&Thread<MD, TD>>, nargs: u32) -> Status {
         let from = match from {
             Some(thread) => thread.as_ptr(),
             None => std::ptr::null_mut(),
@@ -48,36 +48,36 @@ impl<MainData, ThreadData> Thread<MainData, ThreadData> {
     }
 }
 
-pub struct ThreadMain<MainData, ThreadData> {
-    pub(crate) thread: Thread<MainData, ThreadData>,
+pub struct ThreadMain<MD, TD: ThreadData<MD>> {
+    pub(crate) thread: Thread<MD, TD>,
 }
 
-impl<MainData, ThreadData> Deref for ThreadMain<MainData, ThreadData> {
-    type Target = Thread<MainData, ThreadData>;
+impl<MD, TD: ThreadData<MD>> Deref for ThreadMain<MD, TD> {
+    type Target = Thread<MD, TD>;
 
     fn deref(&self) -> &Self::Target {
         &self.thread
     }
 }
 
-impl<MainData, ThreadData> ThreadMain<MainData, ThreadData> {
-    pub fn data(&self) -> &RefCell<MainData> {
+impl<MD, TD: ThreadData<MD>> ThreadMain<MD, TD> {
+    pub fn data(&self) -> &RefCell<MD> {
         unsafe {
             sys::lua_getthreaddata(self.as_ptr())
-                .cast::<RefCell<MainData>>()
+                .cast::<RefCell<MD>>()
                 .as_ref()
                 .unwrap_unchecked()
         }
     }
 }
 
-pub struct ThreadRef<MainData, ThreadData> {
-    pub(crate) thread: Thread<MainData, ThreadData>,
-    pub(crate) _thref: Ref<MainData, ThreadData>,
+pub struct ThreadRef<MD, TD: ThreadData<MD>> {
+    pub(crate) thread: Thread<MD, TD>,
+    pub(crate) _thref: Ref<MD, TD>,
 }
 
-impl<MainData, ThreadData> Deref for ThreadRef<MainData, ThreadData> {
-    type Target = Thread<MainData, ThreadData>;
+impl<MD, TD: ThreadData<MD>> Deref for ThreadRef<MD, TD> {
+    type Target = Thread<MD, TD>;
 
     fn deref(&self) -> &Self::Target {
         &self.thread

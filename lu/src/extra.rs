@@ -1,4 +1,4 @@
-use crate::{Context, FnReturn, thread::ThreadMain};
+use crate::{Context, FnReturn, Thread, ThreadMain};
 
 #[repr(C)]
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -40,39 +40,47 @@ impl From<sys::lua_Type> for Type {
     }
 }
 
-pub struct Ref<MainData, ThreadData>(pub(crate) ThreadMain<MainData, ThreadData>, pub(crate) u32);
+pub struct Ref<MD, TD: ThreadData<MD>>(pub(crate) ThreadMain<MD, TD>, pub(crate) u32);
 
-impl<MainData, ThreadData> Drop for Ref<MainData, ThreadData> {
+impl<MD, TD: ThreadData<MD>> Drop for Ref<MD, TD> {
     fn drop(&mut self) {
         unsafe { sys::lua_unref(self.0.as_ptr(), self.1 as _) }
     }
 }
 
-pub enum Function<MainData, ThreadData> {
+pub trait ThreadData<MD>: Sized {
+    fn new(parent: &Thread<MD, Self>, thread: &Thread<MD, Self>) -> Self;
+}
+
+impl<MD> ThreadData<MD> for () {
+    fn new(_parent: &Thread<MD, Self>, _thread: &Thread<MD, Self>) -> Self {}
+}
+
+pub enum Function<MD, TD: ThreadData<MD>> {
     Normal {
         name: &'static str,
-        func: extern "C-unwind" fn(ctx: Context<MainData, ThreadData>) -> FnReturn,
+        func: extern "C-unwind" fn(ctx: Context<MD, TD>) -> FnReturn,
     },
 
     Continuation {
         name: &'static str,
-        func: extern "C-unwind" fn(ctx: Context<MainData, ThreadData>) -> FnReturn,
-        cont: extern "C-unwind" fn(ctx: Context<MainData, ThreadData>, status: Status) -> FnReturn,
+        func: extern "C-unwind" fn(ctx: Context<MD, TD>) -> FnReturn,
+        cont: extern "C-unwind" fn(ctx: Context<MD, TD>, status: Status) -> FnReturn,
     },
 }
 
-impl<MainData, ThreadData> Function<MainData, ThreadData> {
-    pub fn normal(
+impl<MD, TD: ThreadData<MD>> Function<MD, TD> {
+    pub fn norm(
         name: &'static str,
-        func: extern "C-unwind" fn(ctx: Context<MainData, ThreadData>) -> FnReturn,
+        func: extern "C-unwind" fn(ctx: Context<MD, TD>) -> FnReturn,
     ) -> Self {
         Self::Normal { name, func }
     }
 
     pub fn cont(
         name: &'static str,
-        func: extern "C-unwind" fn(ctx: Context<MainData, ThreadData>) -> FnReturn,
-        cont: extern "C-unwind" fn(ctx: Context<MainData, ThreadData>, status: Status) -> FnReturn,
+        func: extern "C-unwind" fn(ctx: Context<MD, TD>) -> FnReturn,
+        cont: extern "C-unwind" fn(ctx: Context<MD, TD>, status: Status) -> FnReturn,
     ) -> Self {
         Self::Continuation { name, func, cont }
     }

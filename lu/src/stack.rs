@@ -6,22 +6,22 @@ use std::{
 };
 
 use crate::{
-    Bytecode, Context, FnReturn, Function, Ref, Status, Thread, ThreadMain, ThreadRef, Type,
-    Userdata,
+    Bytecode, Context, FnReturn, Function, Ref, Status, Thread, ThreadData, ThreadMain, ThreadRef,
+    Type, Userdata,
 };
 
 #[repr(transparent)]
-pub struct Stack<MainData, ThreadData>(
+pub struct Stack<MD, TD: ThreadData<MD>>(
     pub(crate) NonNull<sys::lua_State>,
-    pub(crate) PhantomData<(MainData, ThreadData)>,
+    pub(crate) PhantomData<(MD, TD)>,
 );
 
-impl<MainData, ThreadData> Stack<MainData, ThreadData> {
+impl<MD, TD: ThreadData<MD>> Stack<MD, TD> {
     pub fn as_ptr(&self) -> *mut sys::lua_State {
         self.0.as_ptr()
     }
 
-    pub fn main(&self) -> ThreadMain<MainData, ThreadData> {
+    pub fn main(&self) -> ThreadMain<MD, TD> {
         let ptr = unsafe { NonNull::new_unchecked(sys::lua_mainthread(self.as_ptr())) };
 
         ThreadMain {
@@ -29,7 +29,7 @@ impl<MainData, ThreadData> Stack<MainData, ThreadData> {
         }
     }
 
-    pub fn thread(&self) -> &Thread<MainData, ThreadData> {
+    pub fn thread(&self) -> &Thread<MD, TD> {
         unsafe { std::mem::transmute(self) }
     }
 
@@ -74,11 +74,11 @@ impl<MainData, ThreadData> Stack<MainData, ThreadData> {
         unsafe { sys::lua_rawcheckstack(self.as_ptr(), n as _) }
     }
 
-    pub fn xmove(&self, to: &Thread<MainData, ThreadData>, n: u32) {
+    pub fn xmove(&self, to: &Thread<MD, TD>, n: u32) {
         unsafe { sys::lua_xmove(self.as_ptr(), to.as_ptr(), n as _) }
     }
 
-    pub fn xpush(&self, to: &Thread<MainData, ThreadData>, idx: i32) {
+    pub fn xpush(&self, to: &Thread<MD, TD>, idx: i32) {
         unsafe { sys::lua_xpush(self.as_ptr(), to.as_ptr(), idx as _) }
     }
 
@@ -123,17 +123,17 @@ impl<MainData, ThreadData> Stack<MainData, ThreadData> {
         &self,
         name: &CStr,
         nups: u32,
-        func: extern "C-unwind" fn(ctx: Context<MainData, ThreadData>) -> FnReturn,
-        cont: extern "C-unwind" fn(ctx: Context<MainData, ThreadData>, status: Status) -> FnReturn,
+        func: extern "C-unwind" fn(ctx: Context<MD, TD>) -> FnReturn,
+        cont: extern "C-unwind" fn(ctx: Context<MD, TD>, status: Status) -> FnReturn,
     ) {
         unsafe {
             let func = std::mem::transmute::<
-                extern "C-unwind" fn(Context<MainData, ThreadData>) -> FnReturn,
+                extern "C-unwind" fn(Context<MD, TD>) -> FnReturn,
                 extern "C-unwind" fn(*mut sys::lua_State) -> i32,
             >(func);
 
             let cont = std::mem::transmute::<
-                extern "C-unwind" fn(Context<MainData, ThreadData>, Status) -> FnReturn,
+                extern "C-unwind" fn(Context<MD, TD>, Status) -> FnReturn,
                 extern "C-unwind" fn(*mut sys::lua_State, sys::lua_Status) -> i32,
             >(cont);
 
@@ -145,11 +145,11 @@ impl<MainData, ThreadData> Stack<MainData, ThreadData> {
         &self,
         name: &CStr,
         nups: u32,
-        func: extern "C-unwind" fn(ctx: Context<MainData, ThreadData>) -> FnReturn,
+        func: extern "C-unwind" fn(ctx: Context<MD, TD>) -> FnReturn,
     ) {
         unsafe {
             let func = std::mem::transmute::<
-                extern "C-unwind" fn(Context<MainData, ThreadData>) -> FnReturn,
+                extern "C-unwind" fn(Context<MD, TD>) -> FnReturn,
                 extern "C-unwind" fn(*mut sys::lua_State) -> i32,
             >(func);
 
@@ -160,8 +160,8 @@ impl<MainData, ThreadData> Stack<MainData, ThreadData> {
     pub fn push_extern_function_cont(
         &self,
         name: &CStr,
-        func: extern "C-unwind" fn(ctx: Context<MainData, ThreadData>) -> FnReturn,
-        cont: extern "C-unwind" fn(ctx: Context<MainData, ThreadData>, status: Status) -> FnReturn,
+        func: extern "C-unwind" fn(ctx: Context<MD, TD>) -> FnReturn,
+        cont: extern "C-unwind" fn(ctx: Context<MD, TD>, status: Status) -> FnReturn,
     ) {
         self.push_extern_closure_cont(name, 0, func, cont);
     }
@@ -169,18 +169,18 @@ impl<MainData, ThreadData> Stack<MainData, ThreadData> {
     pub fn push_extern_function(
         &self,
         name: &CStr,
-        func: extern "C-unwind" fn(ctx: Context<MainData, ThreadData>) -> FnReturn,
+        func: extern "C-unwind" fn(ctx: Context<MD, TD>) -> FnReturn,
     ) {
         self.push_extern_closure(name, 0, func);
     }
 
-    pub fn push_function(&self, func: Function<MainData, ThreadData>) {
+    pub fn push_function(&self, func: &Function<MD, TD>) {
         let name = CString::new(func.name()).expect("function name contains null byte");
 
         match func {
-            Function::Normal { func, .. } => self.push_extern_function(name.as_c_str(), func),
+            Function::Normal { func, .. } => self.push_extern_function(name.as_c_str(), *func),
             Function::Continuation { func, cont, .. } => {
-                self.push_extern_function_cont(name.as_c_str(), func, cont)
+                self.push_extern_function_cont(name.as_c_str(), *func, *cont)
             }
         }
     }
@@ -209,7 +209,7 @@ impl<MainData, ThreadData> Stack<MainData, ThreadData> {
         }
     }
 
-    pub fn push_thread(&self, thread: &Thread<MainData, ThreadData>) {
+    pub fn push_thread(&self, thread: &Thread<MD, TD>) {
         if thread.as_ptr() == self.as_ptr() {
             unsafe { sys::lua_pushthread(self.as_ptr()) };
         } else {
@@ -220,7 +220,7 @@ impl<MainData, ThreadData> Stack<MainData, ThreadData> {
         }
     }
 
-    pub fn push_thread_new(&self) -> ThreadRef<MainData, ThreadData> {
+    pub fn push_thread_new(&self) -> ThreadRef<MD, TD> {
         let thread = unsafe { sys::lua_newthread(self.as_ptr()) };
 
         let thread = Thread(NonNull::new(thread).unwrap(), PhantomData);
@@ -238,7 +238,7 @@ impl<MainData, ThreadData> Stack<MainData, ThreadData> {
         unsafe { std::slice::from_raw_parts_mut(ptr as _, size) }
     }
 
-    pub fn push_ref(&self, r: &Ref<MainData, ThreadData>) -> Type {
+    pub fn push_ref(&self, r: &Ref<MD, TD>) -> Type {
         unsafe { Type::from(sys::lua_getref(self.as_ptr(), r.1 as _)) }
     }
 
@@ -376,7 +376,7 @@ impl<MainData, ThreadData> Stack<MainData, ThreadData> {
         }
     }
 
-    pub unsafe fn to_thread_unchecked(&self, idx: i32) -> ThreadRef<MainData, ThreadData> {
+    pub unsafe fn to_thread_unchecked(&self, idx: i32) -> ThreadRef<MD, TD> {
         let ptr = unsafe { sys::lua_tothread(self.as_ptr(), idx as _) };
 
         let thread = unsafe { Thread(NonNull::new_unchecked(ptr), PhantomData) };
@@ -388,7 +388,7 @@ impl<MainData, ThreadData> Stack<MainData, ThreadData> {
         }
     }
 
-    pub fn to_thread(&self, idx: i32) -> Option<ThreadRef<MainData, ThreadData>> {
+    pub fn to_thread(&self, idx: i32) -> Option<ThreadRef<MD, TD>> {
         let ptr = unsafe { sys::lua_tothread(self.as_ptr(), idx as _) };
 
         if !ptr.is_null() {
@@ -423,7 +423,7 @@ impl<MainData, ThreadData> Stack<MainData, ThreadData> {
         }
     }
 
-    pub fn to_ref(&self, idx: i32) -> Ref<MainData, ThreadData> {
+    pub fn to_ref(&self, idx: i32) -> Ref<MD, TD> {
         Ref(self.main(), unsafe {
             sys::lua_ref(self.as_ptr(), idx) as _
         })
