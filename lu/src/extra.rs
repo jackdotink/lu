@@ -1,6 +1,4 @@
-use std::ffi::CString;
-
-use crate::{Config, Context, FnReturn, Thread, ThreadMain};
+use crate::{Config, Context, FnReturn, ThreadMain};
 
 #[repr(C)]
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

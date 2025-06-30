@@ -1,8 +1,7 @@
 use std::{cell::RefCell, ffi, marker::PhantomData, ptr::NonNull};
 
 use crate::{
-    Config, DefaultAllocator, Library, LuauAllocator, Stack, Thread, ThreadData, ThreadMain,
-    ThreadRef, Userdata,
+    Config, Library, LuauAllocator, Stack, Thread, ThreadData, ThreadMain, ThreadRef, Userdata,
 };
 
 pub struct State<C: Config> {
