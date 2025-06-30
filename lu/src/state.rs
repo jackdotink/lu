@@ -15,8 +15,8 @@ impl<C: Config> Drop for State<C> {
     fn drop(&mut self) {
         unsafe {
             sys::lua_close(self.ptr.as_ptr());
-            self.main.drop_in_place();
-            self.alloc.drop_in_place();
+            drop(Box::from_raw(self.main.as_ptr()));
+            drop(Box::from_raw(self.alloc.as_ptr()));
         }
     }
 }
@@ -64,9 +64,9 @@ impl<C: Config> State<C> {
                 }
             } else {
                 unsafe {
-                    sys::lua_getthreaddata(thread)
-                        .cast::<RefCell<C::ThreadData>>()
-                        .drop_in_place();
+                    drop(Box::from_raw(
+                        sys::lua_getthreaddata(thread).cast::<RefCell<C::ThreadData>>(),
+                    ));
                 }
             }
         }
