@@ -1,19 +1,18 @@
 use std::{cell::RefCell, ffi, marker::PhantomData, ptr::NonNull};
 
 use crate::{
-    DefaultAllocator, Library, LuauAllocator, Stack, Thread, ThreadData, ThreadMain, ThreadRef,
-    Userdata,
+    Config, DefaultAllocator, Library, LuauAllocator, Stack, Thread, ThreadData, ThreadMain,
+    ThreadRef, Userdata,
 };
 
-pub struct State<MD, TD: ThreadData<MD>, Alloc: LuauAllocator = DefaultAllocator> {
-    libraries: Vec<(&'static str, Library<MD, TD>)>,
-    alloc: NonNull<Alloc>,
-    main: NonNull<RefCell<MD>>,
-    data: PhantomData<TD>,
+pub struct State<C: Config> {
+    libraries: Vec<(&'static str, Library<C>)>,
+    alloc: NonNull<C::Allocator>,
+    main: NonNull<RefCell<C::MainData>>,
     ptr: NonNull<sys::lua_State>,
 }
 
-impl<MD, TD: ThreadData<MD>, Alloc: LuauAllocator> Drop for State<MD, TD, Alloc> {
+impl<C: Config> Drop for State<C> {
     fn drop(&mut self) {
         unsafe {
             sys::lua_close(self.ptr.as_ptr());
@@ -23,8 +22,8 @@ impl<MD, TD: ThreadData<MD>, Alloc: LuauAllocator> Drop for State<MD, TD, Alloc>
     }
 }
 
-impl<MD, TD: ThreadData<MD>, Alloc: LuauAllocator> State<MD, TD, Alloc> {
-    pub fn new(main_data: MD, alloc: Alloc) -> Self {
+impl<C: Config> State<C> {
+    pub fn new(main_data: C::MainData, alloc: C::Allocator) -> Self {
         let main = NonNull::new(Box::into_raw(Box::new(RefCell::new(main_data)))).unwrap();
         let alloc = NonNull::new(Box::into_raw(Box::new(alloc))).unwrap();
 
@@ -50,16 +49,16 @@ impl<MD, TD: ThreadData<MD>, Alloc: LuauAllocator> State<MD, TD, Alloc> {
             }
         }
 
-        extern "C-unwind" fn userthread<MD, TD: ThreadData<MD>>(
+        extern "C-unwind" fn userthread<C: Config>(
             parent: *mut sys::lua_State,
             thread: *mut sys::lua_State,
         ) {
             if !parent.is_null() {
                 unsafe {
-                    let parent = Thread::<MD, TD>(NonNull::new_unchecked(parent), PhantomData);
-                    let thread = Thread::<MD, TD>(NonNull::new_unchecked(thread), PhantomData);
+                    let parent = Thread::<C>(NonNull::new_unchecked(parent), PhantomData);
+                    let thread = Thread::<C>(NonNull::new_unchecked(thread), PhantomData);
 
-                    let data = TD::new(&parent, &thread);
+                    let data = C::ThreadData::new(&parent, &thread);
                     let data = Box::into_raw(Box::new(RefCell::new(data)));
 
                     sys::lua_setthreaddata(thread.as_ptr(), data.cast());
@@ -67,24 +66,23 @@ impl<MD, TD: ThreadData<MD>, Alloc: LuauAllocator> State<MD, TD, Alloc> {
             } else {
                 unsafe {
                     sys::lua_getthreaddata(thread)
-                        .cast::<RefCell<TD>>()
+                        .cast::<RefCell<C::ThreadData>>()
                         .drop_in_place();
                 }
             }
         }
 
-        let ptr = unsafe { sys::lua_newstate(alloc_fn::<Alloc>, alloc.as_ptr().cast()) };
+        let ptr = unsafe { sys::lua_newstate(alloc_fn::<C::Allocator>, alloc.as_ptr().cast()) };
 
         unsafe {
             let callbacks = sys::lua_callbacks(ptr);
-            (*callbacks).userthread = Some(userthread::<MD, TD>);
+            (*callbacks).userthread = Some(userthread::<C>);
         }
 
         Self {
             libraries: Vec::new(),
             alloc,
             main,
-            data: PhantomData,
             ptr: NonNull::new(ptr).unwrap(),
         }
     }
@@ -93,19 +91,19 @@ impl<MD, TD: ThreadData<MD>, Alloc: LuauAllocator> State<MD, TD, Alloc> {
         self.ptr.as_ptr()
     }
 
-    pub fn thread(&self) -> ThreadMain<MD, TD> {
+    pub fn thread(&self) -> ThreadMain<C> {
         unsafe { std::mem::transmute(self.ptr) }
     }
 
-    pub fn stack(&self) -> &Stack<MD, TD> {
+    pub fn stack(&self) -> &Stack<C> {
         unsafe { std::mem::transmute(&self.ptr) }
     }
 
-    pub fn data(&self) -> &RefCell<MD> {
+    pub fn data(&self) -> &RefCell<C::MainData> {
         unsafe { self.main.as_ref() }
     }
 
-    pub fn open_library(&mut self, name: &'static str, library: Library<MD, TD>) {
+    pub fn open_library(&mut self, name: &'static str, library: Library<C>) {
         let stack = self.stack();
         stack.reserve(3);
 
@@ -189,7 +187,7 @@ impl<MD, TD: ThreadData<MD>, Alloc: LuauAllocator> State<MD, TD, Alloc> {
         unsafe { sys::luaL_sandbox(self.as_ptr()) }
     }
 
-    pub fn new_thread(&self) -> ThreadRef<MD, TD> {
+    pub fn new_thread(&self) -> ThreadRef<C> {
         let thread = self.stack().push_thread_new();
         self.stack().pop(1);
 

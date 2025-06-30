@@ -6,23 +6,23 @@ use std::{
     ptr::NonNull,
 };
 
-use crate::{Stack, ThreadData, ThreadRef, Type, Userdata};
+use crate::{Config, Stack, ThreadRef, Type, Userdata};
 
 #[repr(transparent)]
 pub struct FnReturn(i32);
 
 #[repr(transparent)]
-pub struct Context<MD, TD: ThreadData<MD>>(NonNull<sys::lua_State>, PhantomData<(MD, TD)>);
+pub struct Context<C: Config>(NonNull<sys::lua_State>, PhantomData<C>);
 
-impl<MD, TD: ThreadData<MD>> Deref for Context<MD, TD> {
-    type Target = Stack<MD, TD>;
+impl<C: Config> Deref for Context<C> {
+    type Target = Stack<C>;
 
     fn deref(&self) -> &Self::Target {
         unsafe { std::mem::transmute(self) }
     }
 }
 
-impl<MD, TD: ThreadData<MD>> Context<MD, TD> {
+impl<C: Config> Context<C> {
     pub fn arg_error(&self, narg: u32, reason: &CStr) -> ! {
         unsafe { sys::luaL_argerror(self.as_ptr(), narg as _, reason.as_ptr()) }
     }
@@ -139,7 +139,7 @@ impl<MD, TD: ThreadData<MD>> Context<MD, TD> {
     }
 
     pub fn arg_userdata_opt<T: Userdata>(&self, narg: u32) -> Option<&RefCell<T>> {
-        fn error<MD, TD: ThreadData<MD>, T: Userdata>(ctx: &Context<MD, TD>, narg: u32) -> ! {
+        fn error<C: Config, T: Userdata>(ctx: &Context<C>, narg: u32) -> ! {
             let type_name = CString::new(format!("{} or nil", T::name()))
                 .expect("userdata name contains null byte");
 
@@ -150,18 +150,18 @@ impl<MD, TD: ThreadData<MD>> Context<MD, TD> {
             Type::Nil | Type::None => None,
             Type::Userdata => Some(
                 self.to_userdata(narg as _)
-                    .unwrap_or_else(|| error::<_, _, T>(self, narg)),
+                    .unwrap_or_else(|| error::<_, T>(self, narg)),
             ),
-            _ => error::<_, _, T>(self, narg),
+            _ => error::<_, T>(self, narg),
         }
     }
 
-    pub fn arg_thread(&self, narg: u32) -> ThreadRef<MD, TD> {
+    pub fn arg_thread(&self, narg: u32) -> ThreadRef<C> {
         self.to_thread(narg as _)
             .unwrap_or_else(|| self.arg_type_error(narg, c"thread"))
     }
 
-    pub fn arg_thread_opt(&self, narg: u32) -> Option<ThreadRef<MD, TD>> {
+    pub fn arg_thread_opt(&self, narg: u32) -> Option<ThreadRef<C>> {
         match self.type_of(narg as _) {
             Type::Nil | Type::None => None,
             Type::Thread => Some(unsafe { self.to_thread_unchecked(narg as _) }),
