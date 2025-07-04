@@ -493,7 +493,7 @@ impl<C: Config> Stack<C> {
             let nextindex = unsafe { sys::lua_rawiter(self.as_ptr(), tblidx, iterindex) };
 
             if nextindex == -1 {
-                break;
+                return None;
             } else {
                 iterindex = nextindex;
 
