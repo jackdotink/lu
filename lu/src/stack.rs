@@ -2,6 +2,7 @@ use std::{
     cell::RefCell,
     ffi::{CStr, CString},
     marker::PhantomData,
+    ops::ControlFlow,
     ptr::NonNull,
 };
 
@@ -486,7 +487,7 @@ impl<C: Config> Stack<C> {
         unsafe { sys::lua_objlen(self.as_ptr(), idx as _) as u32 }
     }
 
-    pub fn iter(&self, tblidx: i32, mut func: impl FnMut()) {
+    pub fn iter<T>(&self, tblidx: i32, mut func: impl FnMut() -> ControlFlow<T>) -> Option<T> {
         let mut iterindex = 0;
         loop {
             let nextindex = unsafe { sys::lua_rawiter(self.as_ptr(), tblidx, iterindex) };
@@ -495,7 +496,11 @@ impl<C: Config> Stack<C> {
                 break;
             } else {
                 iterindex = nextindex;
-                func();
+
+                if let ControlFlow::Break(value) = func() {
+                    return Some(value);
+                }
+
                 self.pop(2);
             }
         }
