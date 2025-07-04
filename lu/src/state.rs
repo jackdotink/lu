@@ -110,7 +110,6 @@ impl<C: Config> State<C> {
         library.push(stack);
 
         stack.table_set_raw(sys::LUA_GLOBALSINDEX);
-        stack.pop(1);
 
         self.libraries.push((name, library))
     }
