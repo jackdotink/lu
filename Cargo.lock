@@ -28,7 +28,7 @@ checksum = "1171693293099992e19cddea4e8b849964e9846f4acee11b3948bcc337be8776"
 
 [[package]]
 name = "lu"
-version = "0.3.0"
+version = "0.4.0"
 dependencies = [
  "libc",
  "lu-derive",
@@ -46,7 +46,7 @@ dependencies = [
 
 [[package]]
 name = "lu-sys"
-version = "0.680.0"
+version = "0.681.0"
 dependencies = [
  "cmake",
  "libc",

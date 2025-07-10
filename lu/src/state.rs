@@ -116,7 +116,8 @@ impl<C: Config> State<C> {
 
     pub fn open_userdata<U: Userdata>(&self) {
         extern "C-unwind" fn dtor<U: Userdata>(_: *mut sys::lua_State, ud: *mut ffi::c_void) {
-            unsafe { ud.cast::<U>().drop_in_place() };
+            let ud = ud.cast::<RefCell<U>>();
+            unsafe { ud.drop_in_place() };
         }
 
         let stack = self.stack();
