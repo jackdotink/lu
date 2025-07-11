@@ -43,6 +43,9 @@ fn main() {
     println!("cargo:rustc-link-lib=static=Luau.Compiler");
     println!("cargo:rustc-link-lib=static=Luau.Ast");
 
-    #[cfg(not(target_os = "windows"))]
+    #[cfg(target_os = "linux")]
     println!("cargo:rustc-link-lib=stdc++");
+
+    #[cfg(target_os = "macos")]
+    println!("cargo:rustc-link-lib=libc++");
 }
