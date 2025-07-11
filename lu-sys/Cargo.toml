@@ -3,7 +3,7 @@ name = "lu-sys"
 description = "FFI bindings to the Luau C API"
 license = "MIT"
 repository = "https://github.com/jackdotink/lu"
-version = "0.681.2"
+version = "0.681.3"
 edition = "2024"
 
 [dependencies]
