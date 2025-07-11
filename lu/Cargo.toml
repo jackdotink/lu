@@ -3,10 +3,10 @@ name = "lu"
 description = "A library for embedding Luau"
 license = "MIT"
 repository = "https://github.com/jackdotink/lu"
-version = "0.4.0"
+version = "0.4.1"
 edition = "2024"
 
 [dependencies]
-libc = "0.2.174"
-sys = { version = "0.681.0", path = "../lu-sys", package = "lu-sys" }
-derive = { version = "0.2.0", path = "../lu-derive", package = "lu-derive" }
+libc = "0.2"
+sys = { version = "0.681", path = "../lu-sys", package = "lu-sys" }
+derive = { version = "0.2", path = "../lu-derive", package = "lu-derive" }
