@@ -1,4 +1,4 @@
-use crate::{Config, Context, FnReturn, Function, Stack};
+use crate::{Config, Context, FnReturn, Function, Stack, Status};
 
 #[derive(Default)]
 pub struct Library<C: Config>(Vec<(&'static str, LibraryItem<C>)>);
@@ -29,7 +29,7 @@ impl<C: Config> Library<C> {
         self,
         name: &'static str,
         func: extern "C-unwind" fn(ctx: Context<C>) -> FnReturn,
-        cont: extern "C-unwind" fn(ctx: Context<C>, status: crate::Status) -> FnReturn,
+        cont: extern "C-unwind" fn(ctx: Context<C>, status: Status) -> FnReturn,
     ) -> Self {
         self.with(name, Function::cont(name, func, cont))
     }

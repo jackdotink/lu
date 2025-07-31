@@ -19,7 +19,7 @@ pub use library::{Library, LibraryConstant, LibraryItem};
 pub use stack::Stack;
 pub use state::State;
 pub use thread::{Thread, ThreadMain, ThreadRef};
-pub use userdata::{Userdata, unique_tag};
+pub use userdata::{Methods, Userdata, unique_tag};
 
 #[allow(unused)]
 pub trait Config: Sized {

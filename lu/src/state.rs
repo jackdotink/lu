@@ -1,7 +1,8 @@
 use std::{cell::RefCell, ffi, marker::PhantomData, ptr::NonNull};
 
 use crate::{
-    Config, Library, LuauAllocator, Stack, Thread, ThreadData, ThreadMain, ThreadRef, Userdata,
+    Config, Library, LuauAllocator, Methods, Stack, Thread, ThreadData, ThreadMain, ThreadRef,
+    Userdata,
 };
 
 pub struct State<C: Config> {
@@ -114,7 +115,9 @@ impl<C: Config> State<C> {
         self.libraries.push((name, library))
     }
 
-    pub fn open_userdata<U: Userdata>(&self) {
+    pub fn open_userdata<U: Userdata>(&self, methods: Methods<C>) {
+        let methods = methods.methods;
+
         extern "C-unwind" fn dtor<U: Userdata>(_: *mut sys::lua_State, ud: *mut ffi::c_void) {
             let ud = ud.cast::<RefCell<U>>();
             unsafe { ud.drop_in_place() };
@@ -126,6 +129,17 @@ impl<C: Config> State<C> {
         stack.push_string(U::name());
         stack.table_set_raw_field(-2, c"__type");
 
+        stack.push_table_with(0, methods.len() as _);
+        for (name, func) in methods {
+            stack.push_string(name);
+            stack.push_function(&func);
+            stack.table_set_raw(-3);
+        }
+
+        stack.push_copy(-1);
+        stack.table_set_raw_field(-3, c"__namecall");
+        stack.table_set_raw_field(-2, c"__index");
+
         unsafe {
             sys::lua_setuserdatametatable(self.as_ptr(), U::tag() as _);
             sys::lua_setuserdatadtor(self.as_ptr(), U::tag() as _, Some(dtor::<U>));
@@ -133,9 +147,7 @@ impl<C: Config> State<C> {
     }
 
     pub fn open_std(&self) {
-        unsafe {
-            sys::luaL_openlibs(self.as_ptr());
-        }
+        unsafe { sys::luaL_openlibs(self.as_ptr()) };
     }
 
     pub fn open_base(&self) {
