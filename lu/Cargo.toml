@@ -8,5 +8,5 @@ edition = "2024"
 
 [dependencies]
 libc = "0.2"
-sys = { version = "0.684", path = "../lu-sys", package = "lu-sys" }
+sys = { version = "0.686", path = "../lu-sys", package = "lu-sys" }
 derive = { version = "0.2", path = "../lu-derive", package = "lu-derive" }
