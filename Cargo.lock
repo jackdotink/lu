@@ -46,7 +46,7 @@ dependencies = [
 
 [[package]]
 name = "lu-sys"
-version = "0.686.0"
+version = "0.687.0"
 dependencies = [
  "cmake",
  "libc",

@@ -851,6 +851,19 @@ unsafe extern "C-unwind" {
         errfunc: c_int,
     ) -> lua_Status;
 
+    /// Calls a protected C function with a single light userdata argument.
+    ///
+    /// The function is executed with only one element, the light userdata `ud`
+    /// on its stack. In the case of an error, this function returns the same
+    /// error codes as [`lua_pcall`] and with the same error object on the
+    /// stack.
+    ///
+    /// When the call is successful, this function returns [`LUA_OK`] and the
+    /// stack is left unchanged.
+    ///
+    /// Values returned by the C function are discarded.
+    pub fn lua_cpcall(L: *mut lua_State, func: lua_CFunction, ud: *mut c_void) -> lua_Status;
+
     /// Yields the thread with the given number of results.
     ///
     /// This function will yield the thread, yielding the given number of
