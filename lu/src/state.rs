@@ -136,8 +136,6 @@ impl<C: Config> State<C> {
             stack.table_set_raw(-3);
         }
 
-        stack.push_copy(-1);
-        stack.table_set_raw_field(-3, c"__namecall");
         stack.table_set_raw_field(-2, c"__index");
 
         unsafe {
